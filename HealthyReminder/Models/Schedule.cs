@@ -11,8 +11,6 @@ namespace HealthyReminder.Models
 
         private uint _notifyMinutes;
 
-        public bool IsDisabled { get; private set; } = false;
-
         public string Title { get; set; }
 
         public string NotificationMessage { get; set; }
@@ -27,11 +25,28 @@ namespace HealthyReminder.Models
             }
         }
 
+        public int Id { get; set; } = 0;
+
+        public bool IsDisabled { get; set; } = false;
+
+        public bool CanDelete { get; set; } = true;
+
         public Schedule(string title, string notificationMessage, uint notifyMinutes)
         {
             Title = title;
             NotificationMessage = notificationMessage;
             NotifyMinutes = notifyMinutes;
+            WakeUp();
+        }
+
+        public Schedule(Int64 id, string title, string notificationMessage, Int64 notifyMinutes, Int64 isDisabled, Int64 canDelete)
+        {
+            Id = (int)id;
+            Title = title;
+            NotificationMessage = notificationMessage;
+            NotifyMinutes = (uint)notifyMinutes;
+            IsDisabled = isDisabled == 0 ? false : true;
+            CanDelete = canDelete == 0 ? false : true;
             WakeUp();
         }
 
@@ -61,6 +76,7 @@ namespace HealthyReminder.Models
             {
                 WakeUp();
             }
+            SqliteDbHelper.SaveSchedule(this);
         }
 
         public void WakeUp()

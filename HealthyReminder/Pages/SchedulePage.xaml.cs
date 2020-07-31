@@ -15,25 +15,39 @@ namespace HealthyReminder.Pages
         private const int MIN_NUMBER = 1;
         private const int MAX_NUMBER = 999;
 
-        private Schedule _destSchedule;
+        private Schedule _schedule;
 
         private Action _showHomePageFunc;
 
         public void RefreshPage(Schedule schedule)
         {
-            _destSchedule = schedule;
             if (schedule != null)
             {
-                TitleTextBox.Text = _destSchedule.Title;
-                NotificationTextBox.Text = _destSchedule.NotificationMessage;
-                NumericTextBox.Text = _destSchedule.NotifyMinutes.ToString();
+
+                _schedule = new Schedule(schedule.Title, schedule.NotificationMessage, schedule.NotifyMinutes);
+                _schedule.Id = schedule.Id;
+                _schedule.IsDisabled = schedule.IsDisabled;
+                _schedule.CanDelete = schedule.CanDelete;
+                if (_schedule.CanDelete)
+                {
+                    DeleteBtn.Visibility = Visibility.Visible;
+                    DefaultBtn.Visibility = Visibility.Hidden;
+                }
+                else
+                {
+                    DeleteBtn.Visibility = Visibility.Hidden;
+                    DefaultBtn.Visibility = Visibility.Visible;
+                }
             }
             else
             {
-                TitleTextBox.Text = "";
-                NotificationTextBox.Text = "";
-                NumericTextBox.Text = "5";
+                _schedule = new Schedule("", "", 5);
+                DeleteBtn.Visibility = Visibility.Visible;
+                DefaultBtn.Visibility = Visibility.Hidden;
             }
+            TitleTextBox.Text = _schedule.Title + "";
+            NotificationTextBox.Text = _schedule.NotificationMessage + "";
+            NumericTextBox.Text = _schedule.NotifyMinutes.ToString();
         }
 
         public SchedulePage(Action showHomePageFunc)
@@ -50,11 +64,33 @@ namespace HealthyReminder.Pages
 
         private void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_destSchedule != null)
-            {
-                ScheduleHelper.Schedules.Remove(_destSchedule);
-            }
+            ScheduleHelper.DeleteSchedule(_schedule);
             _showHomePageFunc();
+        }
+
+        private void DefaultBtn_Click(object sender, RoutedEventArgs e)
+        {
+            Schedule schedule = null;
+            switch(_schedule.Id)
+            {
+                case 1:
+                    schedule = ScheduleHelper.WaterReminder;
+                    break;
+                case 2:
+                    schedule = ScheduleHelper.EyeRestReminder;
+                    break;
+                case 3:
+                    schedule = ScheduleHelper.StandUpReminder;
+                    break;
+                default:
+                    break;
+            }
+            if (schedule != null)
+            {
+                TitleTextBox.Text = schedule.Title;
+                NotificationTextBox.Text = schedule.NotificationMessage;
+                NumericTextBox.Text = schedule.NotifyMinutes.ToString();
+            }
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
@@ -74,17 +110,17 @@ namespace HealthyReminder.Pages
                 MessageBox.Show("Notification Time Can't Be Zero or Empty!");
                 return;
             }
-            if (_destSchedule != null)
+
+            _schedule.Title = TitleTextBox.Text.Trim();
+            _schedule.NotificationMessage = NotificationTextBox.Text.Trim();
+            _schedule.NotifyMinutes = uint.Parse(NumericTextBox.Text);
+            if (_schedule.Id > 0)
             {
-                _destSchedule.Title = TitleTextBox.Text.Trim();
-                _destSchedule.NotificationMessage = NotificationTextBox.Text.Trim();
-                _destSchedule.NotifyMinutes = uint.Parse(NumericTextBox.Text);
+                ScheduleHelper.UpdateSchedule(_schedule);
             }
             else
             {
-                _destSchedule = new Schedule(TitleTextBox.Text.Trim(),
-                    NotificationTextBox.Text.Trim(), uint.Parse(NumericTextBox.Text));
-                ScheduleHelper.Schedules.Add(_destSchedule);
+                ScheduleHelper.AddSchedule(_schedule);
             }
             _showHomePageFunc();
         }

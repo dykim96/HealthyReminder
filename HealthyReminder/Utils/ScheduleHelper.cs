@@ -2,12 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace HealthyReminder.Utils
 {
     public class ScheduleHelper
     {
-        private static List<Schedule> _schedules = Initialize();
+        public static Schedule WaterReminder { get; private set; } = new Schedule(1, "Water Reminder",
+                    "Are you staying hydrated?\nA general rule of thumb is to drink 2 to 3 cups of water per hour.",
+                    120, 0, 0);
+        public static Schedule EyeRestReminder { get; private set; } = new Schedule(2, "Eye Rest Reminder",
+                    "How about giving your eyes a little break?\nLook into the distance for 20 seconds to allow your eyes a chance to refocus.",
+                    30, 0, 0);
+        public static Schedule StandUpReminder { get; private set; } = new Schedule(3, "Stand Up Reminder",
+                    "Sitting too much?\nHow about a stretch, a little walk, or working while standing up?",
+                    60, 0, 0);
+
+        private static List<Schedule> _schedules;
 
         public static long ActiveStartUnixTimeSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -15,35 +26,73 @@ namespace HealthyReminder.Utils
 
         public static List<Schedule> Schedules
         {
-            get { return _schedules; }
+            get
+            {
+                if (_schedules == null)
+                {
+                    LoadSchedules();
+                }
+                return _schedules;
+            }
+            private set { _schedules = value; }
         }
 
-        private ScheduleHelper() { }
-
-        private static List<Schedule> Initialize()
+        private static void LoadSchedules()
         {
-            var schedules = new List<Schedule>();
-
-            // TODO: try to connect to SQLite and read user settings
-            // ReadConfigurations()
-
-            if (schedules.Count <= 0)
+            _schedules = SqliteDbHelper.LoadSchedules();
+            if (_schedules == null)
             {
-                Schedule waterReminder = new Schedule("Water Reminder",
-                    "Are you staying hydrated?\nA general rule of thumb is to drink 2 to 3 cups of water per hour.",
-                    120);
-                schedules.Add(waterReminder);
-                Schedule eyeRestReminder = new Schedule("Eye Rest Reminder",
-                    "How about giving your eyes a little break?\nLook into the distance for 20 seconds to allow your eyes a chance to refocus.",
-                    30);
-                schedules.Add(eyeRestReminder);
-                Schedule standUpReminder = new Schedule("Stand Up Reminder",
-                    "Sitting too much?\nHow about a stretch, a little walk, or working while standing up?",
-                    60);
-                schedules.Add(standUpReminder);
+                _schedules = new List<Schedule>();
             }
 
-            return schedules;
+            if (_schedules.Count <= 0)
+            {
+                AddSchedule(WaterReminder);
+                AddSchedule(EyeRestReminder);
+                AddSchedule(StandUpReminder);
+            }
+        }
+
+        public static void AddSchedule(Schedule schedule)
+        {
+            if (schedule == null)
+                return;
+
+            SqliteDbHelper.SaveSchedule(schedule);
+            _schedules.Add(schedule);
+        }
+
+        public static void UpdateSchedule(Schedule schedule)
+        {
+            if (schedule == null)
+                return;
+
+            if (schedule.Id <= 0)
+            {
+                AddSchedule(schedule);
+            }
+            Schedule scheduleToChange = _schedules.First(s => s.Id == schedule.Id);
+            if (scheduleToChange != null)
+            {
+                SqliteDbHelper.SaveSchedule(schedule);
+                scheduleToChange.Title = schedule.Title;
+                scheduleToChange.NotificationMessage = schedule.NotificationMessage;
+                scheduleToChange.NotifyMinutes = schedule.NotifyMinutes;
+                scheduleToChange.CanDelete = schedule.CanDelete;
+            }
+            else
+            {
+                AddSchedule(schedule);
+            }
+        }
+
+        public static void DeleteSchedule(Schedule schedule)
+        {
+            if (schedule == null)
+                return;
+
+            SqliteDbHelper.DeleteSchedule(schedule.Id);
+            _schedules.Remove(_schedules.FirstOrDefault(s => s.Id == schedule.Id));
         }
 
         public static void Tick(uint idleTimeSeconds)
